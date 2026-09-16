@@ -249,14 +249,14 @@ function init3D(){
   var cityColors=[0x1a1a2e,0x1e1e32,0x222238,0x262640,0x1c1c30,0x202036];
   for(var i=0;i<25;i++){
     var bw=2+Math.random()*4;
-    var bh=4+Math.random()*14;
+    var bh=8+Math.random()*20;
     var bd=2+Math.random()*4;
     var buildingGeo=new THREE.BoxGeometry(bw,bh,bd);
     var buildingMat=new THREE.MeshStandardMaterial({color:cityColors[Math.floor(Math.random()*cityColors.length)],roughness:0.85});
     var building=new THREE.Mesh(buildingGeo,buildingMat);
     var angle=Math.random()*Math.PI*2;
     var dist=15+Math.random()*25;
-    building.position.set(Math.cos(angle)*dist,bh/2-1,Math.sin(angle)*dist);
+    building.position.set(Math.cos(angle)*dist,-bh/2+2,Math.sin(angle)*dist);
     building.castShadow=true;
     scene.add(building);
     var windowRows=Math.floor(bh/1.5);
@@ -275,6 +275,17 @@ function init3D(){
           );
           scene.add(win);
         }
+      }
+    }
+  }
+
+  var floorGeo=new THREE.PlaneGeometry(120,120);
+  var floorMat=new THREE.MeshStandardMaterial({color:0x111118,roughness:0.95});
+  var floor=new THREE.Mesh(floorGeo,floorMat);
+  floor.rotation.x=-Math.PI/2;
+  floor.position.y=-15;
+  floor.receiveShadow=true;
+  scene.add(floor);
       }
     }
   }
@@ -901,7 +912,7 @@ function applyWeather(){
     scene.background=new THREE.Color(0x222233);
     createSnow(200);
   }
-  document.getElementById('newsBox').querySelector('.label').textContent='weather: '+currentWeather;
+  document.getElementById('weatherDisplay').textContent=currentWeather;
 }
 
 function createRain(count){
