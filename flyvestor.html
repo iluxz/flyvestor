@@ -153,7 +153,7 @@ var shaking=false;
 var currentMonitorPage=0;
 var MONITORS_PER_PAGE=3;
 var countdownActive=false;
-var countdownTime=300;
+var countdownTime=60;
 var countdownInterval=null;
 var countdownAudio=new Audio('sciences_downfall.webm');
 countdownAudio.loop=false;
@@ -738,17 +738,11 @@ function showNews(){
 }
 
 function checkSeizure(){
-  var nw=getNetWorth();
-  if(nw<=peak*0.3){
-    seizureTimer=150;
-    shaking=true;
-    stopCountdown();
-  }
 }
 
 function checkCountdown(){
   var nw=getNetWorth();
-  if(nw<=peak*0.5&&!countdownActive&&nw>peak*0.3){
+  if(nw<=peak*0.5&&!countdownActive){
     startCountdown();
   }else if(nw>peak*0.5&&countdownActive){
     stopCountdown();
@@ -758,16 +752,21 @@ function checkCountdown(){
 
 function startCountdown(){
   countdownActive=true;
-  countdownTime=300;
+  countdownTime=60;
   document.getElementById('countdownBox').style.display='block';
   countdownAudio.currentTime=0;
   countdownAudio.play().catch(function(){});
+  document.getElementById('countdownTimer').textContent='1:00';
   if(countdownInterval)clearInterval(countdownInterval);
   countdownInterval=setInterval(function(){
     countdownTime--;
     var min=Math.floor(countdownTime/60);
     var sec=countdownTime%60;
     document.getElementById('countdownTimer').textContent=min+':'+(sec<10?'0':'')+sec;
+    if(countdownTime<=30){
+      document.getElementById('countdownBox').querySelector('div').style.borderColor='#ff0000';
+      document.getElementById('countdownTimer').style.color='#ff0000';
+    }
     if(countdownTime<=0){
       stopCountdown();
       seizureTimer=150;
@@ -778,8 +777,10 @@ function startCountdown(){
 
 function stopCountdown(){
   countdownActive=false;
-  countdownTime=300;
+  countdownTime=60;
   document.getElementById('countdownBox').style.display='none';
+  document.getElementById('countdownBox').querySelector('div').style.borderColor='#f87171';
+  document.getElementById('countdownTimer').style.color='#fff';
   countdownAudio.pause();
   countdownAudio.currentTime=0;
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
