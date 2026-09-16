@@ -754,7 +754,7 @@ function startCountdown(){
   countdownActive=true;
   countdownTime=60;
   document.getElementById('countdownBox').style.display='block';
-  countdownAudio.currentTime=0;
+  countdownAudio.currentTime=240;
   countdownAudio.play().catch(function(){});
   document.getElementById('countdownTimer').textContent='1:00';
   if(countdownInterval)clearInterval(countdownInterval);
@@ -782,7 +782,7 @@ function stopCountdown(){
   document.getElementById('countdownBox').querySelector('div').style.borderColor='#f87171';
   document.getElementById('countdownTimer').style.color='#fff';
   countdownAudio.pause();
-  countdownAudio.currentTime=0;
+  countdownAudio.currentTime=240;
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
 }
 
