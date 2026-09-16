@@ -7,18 +7,18 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;overflow:hidden;font-family:'Courier New',monospace}
-canvas{display:block}
+canvas{display:block;position:relative;z-index:1}
 #ui{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:10}
-#hud{position:fixed;top:20px;left:20px;pointer-events:auto;z-index:20}
+#hud{position:fixed;top:20px;left:20px;pointer-events:auto;z-index:30}
 .hud-box{background:rgba(0,0,0,0.85);border:1px solid #333;border-radius:6px;padding:10px 16px;margin-bottom:8px;color:#e0e0e0;font-size:13px}
 .hud-box .label{color:#888;font-size:10px;text-transform:uppercase;letter-spacing:1px}
 .hud-box .val{font-size:16px;font-weight:bold;margin-top:2px}
 .hud-box .val.green{color:#4ade80}
 .hud-box .val.red{color:#f87171}
 .hud-box .val.gold{color:#facc15}
-#newsBox{position:fixed;top:20px;right:20px;width:260px;pointer-events:auto;z-index:20}
+#newsBox{position:fixed;top:20px;right:20px;width:260px;pointer-events:auto;z-index:30}
 #newsBox .hud-box{font-size:12px;line-height:1.5;color:#aaa;max-height:80px;overflow:hidden}
-#monitorPanel{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:12px;pointer-events:auto;z-index:20}
+#monitorPanel{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:12px;pointer-events:auto;z-index:30}
 .monitor{width:240px;background:rgba(10,10,30,0.95);border:2px solid #444;border-radius:8px;padding:10px;cursor:pointer;transition:all 0.2s;position:relative}
 .monitor:hover{border-color:#4ade80;box-shadow:0 0 15px rgba(74,222,128,0.2)}
 .monitor.flash-green{border-color:#4ade80;box-shadow:0 0 20px rgba(74,222,128,0.4)}
@@ -222,7 +222,8 @@ function init3D(){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  document.body.insertBefore(renderer.domElement,document.body.firstChild);
+  renderer.domElement.style.pointerEvents='none';
+document.body.insertBefore(renderer.domElement,document.body.firstChild);
 
   var ambLight=new THREE.AmbientLight(0x404060,0.6);
   scene.add(ambLight);
