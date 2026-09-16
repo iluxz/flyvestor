@@ -74,6 +74,13 @@ canvas{display:block}
   <div class="hud-box" style="font-size:10px;color:#666">WASD move | E up | Q down | scroll zoom</div>
 </div>
 <div id="newsBox"><div class="hud-box" id="news">the market awaits your decisions, tiny fly</div></div>
+<div id="countdownBox" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:none;z-index:300;text-align:center;pointer-events:none">
+  <div style="background:rgba(0,0,0,0.9);border:2px solid #f87171;border-radius:12px;padding:20px 40px">
+    <div style="color:#f87171;font-size:14px;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">science's downfall</div>
+    <div style="color:#fff;font-size:48px;font-weight:bold" id="countdownTimer">5:00</div>
+    <div style="color:#f87171;font-size:12px;margin-top:8px">recover above 50% peak to stop the countdown</div>
+  </div>
+</div>
 <div id="monitorPanel"></div>
 <div id="tooltip"></div>
 
@@ -100,6 +107,12 @@ var seizureTimer=0;
 var shaking=false;
 var currentMonitorPage=0;
 var MONITORS_PER_PAGE=3;
+var countdownActive=false;
+var countdownTime=300;
+var countdownInterval=null;
+var countdownAudio=new Audio('sciences_downfall.webm');
+countdownAudio.loop=false;
+countdownAudio.volume=0.7;
 
 var newsPool=[
   "market looks stable today",
@@ -627,7 +640,47 @@ function checkSeizure(){
   if(nw<=peak*0.3){
     seizureTimer=150;
     shaking=true;
+    stopCountdown();
   }
+}
+
+function checkCountdown(){
+  var nw=getNetWorth();
+  if(nw<=peak*0.5&&!countdownActive&&nw>peak*0.3){
+    startCountdown();
+  }else if(nw>peak*0.5&&countdownActive){
+    stopCountdown();
+    document.getElementById('news').textContent='you recovered above 50%! countdown stopped.';
+  }
+}
+
+function startCountdown(){
+  countdownActive=true;
+  countdownTime=300;
+  document.getElementById('countdownBox').style.display='block';
+  countdownAudio.currentTime=0;
+  countdownAudio.play().catch(function(){});
+  if(countdownInterval)clearInterval(countdownInterval);
+  countdownInterval=setInterval(function(){
+    countdownTime--;
+    var min=Math.floor(countdownTime/60);
+    var sec=countdownTime%60;
+    document.getElementById('countdownTimer').textContent=min+':'+(sec<10?'0':'')+sec;
+    if(countdownTime<=0){
+      stopCountdown();
+      seizureTimer=150;
+      shaking=true;
+    }
+  },1000);
+}
+
+function stopCountdown(){
+  countdownActive=false;
+  countdownTime=300;
+  document.getElementById('countdownBox').style.display='none';
+  countdownAudio.pause();
+  countdownAudio.currentTime=0;
+  if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
 }
 
 function buyStock(idx){
@@ -668,6 +721,7 @@ function advanceTurn(){
   showNews();
   updateWeather();
   checkSeizure();
+  checkCountdown();
   if(getNetWorth()>peak)peak=getNetWorth();
   updateHUD();
   buildMonitorUI();
@@ -876,6 +930,7 @@ function startGame(){
   }
   currentWeather='clear';
   applyWeather();
+  stopCountdown();
   buildMonitorUI();
   updateHUD();
   updateMonitorMapping();
