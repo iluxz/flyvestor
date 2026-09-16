@@ -789,24 +789,22 @@ function stopCountdown(){
 function buyStock(idx){
   if(gameOverActive)return;
   var s=activeStocks[idx];
-  if(cash>=s.price){
-    cash-=s.price;
-    s.owned++;
-    pressRandomKey();
-    animState='typing';animTimer=15;
-  }
+  if(cash<s.price)return;
+  cash-=s.price;
+  s.owned++;
+  pressRandomKey();
+  animState='typing';animTimer=15;
   advanceTurn();
 }
 
 function sellStock(idx){
   if(gameOverActive)return;
   var s=activeStocks[idx];
-  if(s.owned>0){
-    cash+=s.price;
-    s.owned--;
-    pressRandomKey();
-    animState='typing';animTimer=15;
-  }
+  if(s.owned<=0)return;
+  cash+=s.price;
+  s.owned--;
+  pressRandomKey();
+  animState='typing';animTimer=15;
   advanceTurn();
 }
 
@@ -1286,6 +1284,7 @@ function tmSetCash(){
   cash=parseFloat(document.getElementById('tmCash').value)||0;
   if(getNetWorth()>peak)peak=getNetWorth();
   updateHUD();
+  checkCountdown();
 }
 function tmSetPeak(){
   peak=parseFloat(document.getElementById('tmPeak').value)||0;
@@ -1358,6 +1357,8 @@ function tmCrashAll(){
   buildMonitorUI();
   for(var i=0;i<monitors3d.length;i++)drawMonitorScreen(monitors3d[i]);
   tmBuildStockInputs();
+  updateHUD();
+  checkCountdown();
 }
 function tmMoonAll(){
   for(var i=0;i<activeStocks.length;i++){
@@ -1367,6 +1368,8 @@ function tmMoonAll(){
   buildMonitorUI();
   for(var i=0;i<monitors3d.length;i++)drawMonitorScreen(monitors3d[i]);
   tmBuildStockInputs();
+  updateHUD();
+  checkCountdown();
 }
 function tmReset(){
   localStorage.removeItem('flyvestor_save');
