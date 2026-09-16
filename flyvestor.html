@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>flyvestor</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Courier New',monospace}
+canvas{display:block}
+#ui{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:10}
+#hud{position:fixed;top:20px;left:20px;pointer-events:auto;z-index:20}
+.hud-box{background:rgba(0,0,0,0.85);border:1px solid #333;border-radius:6px;padding:10px 16px;margin-bottom:8px;color:#e0e0e0;font-size:13px}
+.hud-box .label{color:#888;font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.hud-box .val{font-size:16px;font-weight:bold;margin-top:2px}
+.hud-box .val.green{color:#4ade80}
+.hud-box .val.red{color:#f87171}
+.hud-box .val.gold{color:#facc15}
+#newsBox{position:fixed;top:20px;right:20px;width:260px;pointer-events:auto;z-index:20}
+#newsBox .hud-box{font-size:12px;line-height:1.5;color:#aaa;max-height:80px;overflow:hidden}
+#monitorPanel{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:12px;pointer-events:auto;z-index:20}
+.monitor{width:240px;background:rgba(10,10,30,0.95);border:2px solid #444;border-radius:8px;padding:10px;cursor:pointer;transition:all 0.2s;position:relative}
+.monitor:hover{border-color:#4ade80;box-shadow:0 0 15px rgba(74,222,128,0.2)}
+.monitor.flash-green{border-color:#4ade80;box-shadow:0 0 20px rgba(74,222,128,0.4)}
+.monitor.flash-red{border-color:#f87171;box-shadow:0 0 20px rgba(248,113,113,0.4)}
+.monitor .m-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.monitor .m-name{font-size:11px;color:#ccc;font-weight:bold}
+.monitor .m-ticker{font-size:9px;color:#888;background:rgba(255,255,255,0.1);padding:2px 5px;border-radius:3px}
+.monitor .m-price{font-size:22px;font-weight:bold;margin-bottom:4px}
+.monitor .m-owned{font-size:10px;color:#888;margin-bottom:8px}
+.monitor .m-chart{height:50px;background:rgba(0,0,0,0.4);border-radius:4px;margin-bottom:8px;position:relative;overflow:hidden}
+.monitor canvas{width:100%;height:100%;display:block}
+.monitor .m-btns{display:flex;gap:4px}
+.monitor .m-btns button{flex:1;padding:6px;border:none;border-radius:4px;font-family:'Courier New',monospace;font-size:11px;font-weight:bold;cursor:pointer;transition:all 0.1s}
+.btn-buy{background:#166534;color:#4ade80}.btn-buy:hover{background:#15803d}
+.btn-sell{background:#7f1d1d;color:#f87171}.btn-sell:hover{background:#991b1b}
+.btn-hold{background:#1e3a5f;color:#60a5fa}.btn-hold:hover{background:#1e4d7f}
+#tooltip{position:fixed;background:rgba(0,0,0,0.95);border:1px solid #4ade80;border-radius:4px;padding:8px 12px;color:#e0e0e0;font-size:11px;display:none;z-index:100;pointer-events:none;max-width:200px}
+#startScreen{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500}
+#startScreen h1{font-size:48px;color:#facc15;margin-bottom:8px;text-shadow:0 0 30px rgba(250,204,21,0.3)}
+#startScreen .sub{font-size:14px;color:#888;margin-bottom:30px}
+#startScreen button{padding:14px 36px;background:#166534;color:#4ade80;border:none;border-radius:6px;font-family:'Courier New',monospace;font-size:16px;cursor:pointer;transition:all 0.2s}
+#startScreen button:hover{background:#15803d;transform:scale(1.05)}
+#startScreen .lore{font-size:11px;color:#555;margin-top:24px;max-width:420px;text-align:center;line-height:1.7}
+#gameOver{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.97);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:500}
+#gameOver h1{font-size:52px;color:#f87171;margin-bottom:8px}
+#gameOver p{font-size:16px;color:#888;margin-bottom:20px}
+#gameOver button{padding:14px 36px;background:#166534;color:#4ade80;border:none;border-radius:6px;font-family:'Courier New',monospace;font-size:16px;cursor:pointer}
+#gameOver button:hover{background:#15803d}
+#seizureOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:red;opacity:0;pointer-events:none;z-index:400}
+</style>
+</head>
+<body>
+<div id="startScreen">
+  <h1>flyvestor</h1>
+  <div class="sub">you are a fruit fly on a rooftop. you have a briefcase. you must invest.</div>
+  <button onclick="startGame()">start investing</button>
+  <div class="lore">you woke up today as a fruit fly sitting on a city rooftop. in front of you are 3 monitors showing the stock market. you have $10,000 and a briefcase. don't lose 70% of your peak net worth or you will have a seizure and die. this is not financial advice.</div>
+</div>
+<div id="gameOver">
+  <h1>SEIZURE</h1>
+  <p>you lost 70% of your peak net worth. the fruit fly had a seizure.</p>
+  <p id="finalScore"></p>
+  <button onclick="startGame()">try again (you won't)</button>
+</div>
+<div id="seizureOverlay"></div>
+<div id="hud">
+  <div class="hud-box"><div class="label">net worth</div><div class="val green" id="netWorth">$10,000</div></div>
+  <div class="hud-box"><div class="label">cash</div><div class="val" id="cash">$10,000</div></div>
+  <div class="hud-box"><div class="label">peak</div><div class="val gold" id="peak">$10,000</div></div>
+  <div class="hud-box"><div class="label">day</div><div class="val" id="dayNum">1</div></div>
+  <div class="hud-box"><div class="label">weather</div><div class="val" id="weatherDisplay">clear</div></div>
+  <div class="hud-box"><div class="label">loss limit (70%)</div><div class="val red" id="lossLimit">$3,000</div></div>
+  <div class="hud-box" style="font-size:10px;color:#666">WASD move | E up | Q down | scroll zoom</div>
+</div>
+<div id="newsBox"><div class="hud-box" id="news">the market awaits your decisions, tiny fly</div></div>
+<div id="monitorPanel"></div>
+<div id="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+var allStocks=[
+  {name:'BZZ Inc',ticker:'BZZ',price:12.50,owned:0,history:[12.50],color:0x4ade80,desc:'honey & buzz products'},
+  {name:'FRUT Corp',ticker:'FRUT',price:28.00,owned:0,history:[28.00],color:0xf59e0b,desc:'fruit distribution empire'},
+  {name:'DIE Corp',ticker:'DIE',price:65.00,owned:0,history:[65.00],color:0xef4444,desc:'pest control solutions'},
+  {name:'NVIDIA',ticker:'NVDA',price:120.00,owned:0,history:[120.00],color:0x76b900,desc:'gpu supremacy. the fly sees all.'},
+  {name:'Microsoft',ticker:'MSFT',price:380.00,owned:0,history:[380.00],color:0x00a4ef,desc:'windows for flies. blue screen of buzz.'},
+  {name:'Apple',ticker:'AAPL',price:195.00,owned:0,history:[195.00],color:0x999999,desc:'fruit company. the fly respects the branding.'},
+  {name:'Amazon',ticker:'AMZN',price:178.00,owned:0,history:[178.00],color:0xff9900,desc:'delivering tiny packages to tiny flies'},
+  {name:'Tesla',ticker:'TSLA',price:245.00,owned:0,history:[245.00],color:0xe31937,desc:'electric vehicles. the fly drives one.'},
+  {name:'Google',ticker:'GOOG',price:140.00,owned:0,history:[140.00],color:0x4285f4,desc:'the fly googled how to invest. failed.'},
+  {name:'Meta',ticker:'META',price:500.00,owned:0,history:[500.00],color:0x0081fb,desc:'the fly has 4000 followers'}
+];
+var activeStocks=[];
+var cash=10000;
+var peak=10000;
+var day=1;
+var gameOverActive=false;
+var seizureTimer=0;
+var shaking=false;
+var currentMonitorPage=0;
+var MONITORS_PER_PAGE=3;
+
+var newsPool=[
+  "market looks stable today",
+  "investors are cautious",
+  "fruit fly economy booming",
+  "someone sneezed on the trading floor",
+  "wall street confused by tiny briefcase",
+  "breaking: fruit fly makes questionable decision",
+  "markets unsure what to do about the fly",
+  "the briefcase industry is steady",
+  "fly stocks trending on twitter",
+  "trading volume high today"
+];
+var goodNews=[
+  "BZZ Inc reports record honey sales",
+  "FRUT Corp launches new fruit line",
+  "NVDA hits all time high, fly rejoice",
+  "MSFT announces fly-compatible windows",
+  "AAPL releases fruit-branded fly swatter",
+  "AMZN delivers 1 billion packages",
+  "TSLA stock surges 20 percent",
+  "GOOG search for fly investing spikes",
+  "META fly influencer goes viral",
+  "investors optimistic about tiny briefcases",
+  "wall street loves flies now",
+  "someone bought a lot of stock today"
+];
+var badNews=[
+  "BZZ Inc recalls all honey",
+  "FRUT Corp CEO eaten by frog",
+  "DIE Corp product recall: all products",
+  "NVDA stock dips on chip shortage",
+  "MSFT blue screen crashes trading floor",
+  "AAPL fruit recalled, stock plummets",
+  "AMZN delivery drones attack flies",
+  "TSLA autopilot drives into wall street",
+  "GOOG search results: how to sell everything",
+  "META fly influencer loses followers",
+  "investors flee market in panic",
+  "wall street crashes (again)"
+];
+
+var scene,camera,renderer,flyGroup,flyBody,flyWingsL,flyWingsR,flyLegs=[];
+var monitors3d=[];
+var keyboard3d;
+var clock=new THREE.Clock();
+var flyTarget=new THREE.Vector3(0,0.5,0);
+var animState='idle';
+var animTimer=0;
+var typingKey=null;
+var typingHand=null;
+
+function init3D(){
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x1a1a2e);
+  scene.fog=new THREE.Fog(0x1a1a2e,30,80);
+  camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.1,200);
+  camera.position.set(0,4,8);
+  camera.lookAt(0,1,0);
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  document.body.insertBefore(renderer.domElement,document.body.firstChild);
+
+  var ambLight=new THREE.AmbientLight(0x404060,0.6);
+  scene.add(ambLight);
+  var dirLight=new THREE.DirectionalLight(0xffeedd,0.8);
+  dirLight.position.set(10,15,5);
+  dirLight.castShadow=true;
+  dirLight.shadow.mapSize.width=1024;
+  dirLight.shadow.mapSize.height=1024;
+  scene.add(dirLight);
+  var moonLight=new THREE.PointLight(0x6688ff,0.4,50);
+  moonLight.position.set(-5,10,-5);
+  scene.add(moonLight);
+  var monitorGlow=new THREE.PointLight(0x4ade80,0.3,10);
+  monitorGlow.position.set(0,2,-2);
+  scene.add(monitorGlow);
+
+  var roofGeo=new THREE.BoxGeometry(20,0.3,12);
+  var roofMat=new THREE.MeshStandardMaterial({color:0x333344,roughness:0.9});
+  var roof=new THREE.Mesh(roofGeo,roofMat);
+  roof.position.y=-0.15;
+  roof.receiveShadow=true;
+  scene.add(roof);
+
+  var cityColors=[0x1a1a2e,0x1e1e32,0x222238,0x262640,0x1c1c30,0x202036];
+  for(var i=0;i<25;i++){
+    var bw=2+Math.random()*4;
+    var bh=4+Math.random()*14;
+    var bd=2+Math.random()*4;
+    var buildingGeo=new THREE.BoxGeometry(bw,bh,bd);
+    var buildingMat=new THREE.MeshStandardMaterial({color:cityColors[Math.floor(Math.random()*cityColors.length)],roughness:0.85});
+    var building=new THREE.Mesh(buildingGeo,buildingMat);
+    var angle=Math.random()*Math.PI*2;
+    var dist=15+Math.random()*25;
+    building.position.set(Math.cos(angle)*dist,bh/2-1,Math.sin(angle)*dist);
+    building.castShadow=true;
+    scene.add(building);
+    var windowRows=Math.floor(bh/1.5);
+    var windowCols=Math.floor(bw/1.2);
+    for(var r=0;r<windowRows;r++){
+      for(var c=0;c<windowCols;c++){
+        if(Math.random()>0.4){
+          var wGeo=new THREE.PlaneGeometry(0.4,0.5);
+          var wColor=Math.random()>0.7?0xffdd88:Math.random()>0.5?0x88ccff:0x444466;
+          var wMat=new THREE.MeshBasicMaterial({color:wColor,transparent:true,opacity:0.3+Math.random()*0.5});
+          var win=new THREE.Mesh(wGeo,wMat);
+          win.position.set(
+            building.position.x-bw/2+0.8+c*(bw/Math.max(windowCols,1)),
+            building.position.y-bh/2+1+r*1.5,
+            building.position.z+bd/2+0.01
+          );
+          scene.add(win);
+        }
+      }
+    }
+  }
+
+  var moonGeo=new THREE.SphereGeometry(1.5,16,16);
+  var moonMat=new THREE.MeshBasicMaterial({color:0xffffee});
+  var moon=new THREE.Mesh(moonGeo,moonMat);
+  moon.position.set(-20,25,-30);
+  scene.add(moon);
+
+  var starsGeo=new THREE.BufferGeometry();
+  var starPositions=[];
+  for(var i=0;i<800;i++){
+    starPositions.push((Math.random()-0.5)*150,10+Math.random()*40,(Math.random()-0.5)*150);
+  }
+  starsGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPositions,3));
+  var starsMat=new THREE.PointsMaterial({color:0xffffff,size:0.12,transparent:true,opacity:0.7});
+  scene.add(new THREE.Points(starsGeo,starsMat));
+
+  var railGeo=new THREE.BoxGeometry(20,0.08,0.08);
+  var railMat=new THREE.MeshStandardMaterial({color:0x555566,metalness:0.6});
+  for(var i=0;i<2;i++){
+    var rail=new THREE.Mesh(railGeo,railMat);
+    rail.position.set(0,0.35,i===0?-5.8:5.8);
+    scene.add(rail);
+  }
+  for(var i=0;i<10;i++){
+    var postGeo=new THREE.CylinderGeometry(0.03,0.03,0.5);
+    var post=new THREE.Mesh(postGeo,railMat);
+    post.position.set(-9+i*2,0.1,-5.8);
+    scene.add(post);
+    var post2=new THREE.Mesh(postGeo,railMat.clone());
+    post2.position.set(-9+i*2,0.1,5.8);
+    scene.add(post2);
+  }
+
+  createDesk();
+  createFly();
+  createKeyboard();
+}
+
+function createDesk(){
+  var deskGeo=new THREE.BoxGeometry(7,0.15,1.8);
+  var deskMat=new THREE.MeshStandardMaterial({color:0x2a2a3a,roughness:0.7});
+  var desk=new THREE.Mesh(deskGeo,deskMat);
+  desk.position.set(0,1,-1.5);
+  desk.castShadow=true;
+  desk.receiveShadow=true;
+  scene.add(desk);
+
+  var legPositions=[
+    [-3.3,-0.8],[-3.3,0.8],[3.3,-0.8],[3.3,0.8]
+  ];
+  for(var i=0;i<legPositions.length;i++){
+    var legGeo=new THREE.CylinderGeometry(0.06,0.06,1);
+    var legMat=new THREE.MeshStandardMaterial({color:0x222233});
+    var leg=new THREE.Mesh(legGeo,legMat);
+    leg.position.set(legPositions[i][0],0.5,legPositions[i][1]-1.5);
+    scene.add(leg);
+  }
+}
+
+function createMonitor(x,stockData,index){
+  var group=new THREE.Group();
+  group.position.set(x,2,-2);
+
+  var screenGeo=new THREE.BoxGeometry(1.4,1,0.08);
+  var screenMat=new THREE.MeshStandardMaterial({color:0x111122,roughness:0.3,metalness:0.5});
+  var screenMesh=new THREE.Mesh(screenGeo,screenMat);
+  group.add(screenMesh);
+
+  var bezelGeo=new THREE.BoxGeometry(1.5,1.1,0.06);
+  var bezelMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.5});
+  var bezel=new THREE.Mesh(bezelGeo,bezelMat);
+  bezel.position.z=-0.02;
+  group.add(bezel);
+
+  var standGeo=new THREE.CylinderGeometry(0.03,0.05,0.4);
+  var standMat=new THREE.MeshStandardMaterial({color:0x222222});
+  var stand=new THREE.Mesh(standGeo,standMat);
+  stand.position.set(0,-0.7,0);
+  group.add(stand);
+
+  var baseGeo=new THREE.CylinderGeometry(0.2,0.2,0.03);
+  var base=new THREE.Mesh(baseGeo,standMat);
+  base.position.set(0,-0.9,0);
+  group.add(base);
+
+  var canvas=document.createElement('canvas');
+  canvas.width=280;canvas.height=200;
+  var tex=new THREE.CanvasTexture(canvas);
+  var displayGeo=new THREE.PlaneGeometry(1.3,0.9);
+  var displayMat=new THREE.MeshBasicMaterial({map:tex});
+  var display=new THREE.Mesh(displayGeo,displayMat);
+  display.position.z=0.05;
+  group.add(display);
+
+  group.userData={canvas:canvas,ctx:canvas.getContext('2d'),texture:tex,stock:stockData,index:index,mesh:display};
+  scene.add(group);
+  monitors3d.push(group);
+  return group;
+}
+
+function drawMonitorScreen(mon){
+  var ctx=mon.userData.ctx;
+  var c=mon.userData.canvas;
+  var s=mon.userData.stock;
+  ctx.fillStyle='#0a0a1a';
+  ctx.fillRect(0,0,c.width,c.height);
+
+  var hist=s.history;
+  var minP=Infinity,maxP=-Infinity;
+  for(var i=0;i<hist.length;i++){if(hist[i]<minP)minP=hist[i];if(hist[i]>maxP)maxP=hist[i];}
+  var range=maxP-minP||1;
+
+  ctx.strokeStyle='#222';
+  ctx.lineWidth=0.5;
+  for(var y=0;y<c.height;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(c.width,y);ctx.stroke();}
+
+  ctx.beginPath();
+  ctx.strokeStyle='#'+s.color.toString(16).padStart(6,'0');
+  ctx.lineWidth=2;
+  for(var i=0;i<hist.length;i++){
+    var x=(i/(Math.max(hist.length-1,1)))*c.width;
+    var y2=c.height-20-(((hist[i]-minP)/range)*(c.height-40));
+    if(i===0)ctx.moveTo(x,y2);else ctx.lineTo(x,y2);
+  }
+  ctx.stroke();
+
+  var grad=ctx.createLinearGradient(0,0,0,c.height);
+  grad.addColorStop(0,'rgba(0,0,0,0)');
+  grad.addColorStop(1,'rgba(0,0,0,0.5)');
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,c.width,c.height);
+
+  ctx.fillStyle='#fff';
+  ctx.font='bold 14px Courier New';
+  ctx.fillText(s.ticker,8,18);
+  ctx.font='11px Courier New';
+  ctx.fillStyle='#aaa';
+  ctx.fillText(s.name,8,32);
+
+  ctx.fillStyle=s.price>=hist[Math.max(0,hist.length-2)]?'#4ade80':'#f87171';
+  ctx.font='bold 18px Courier New';
+  ctx.fillText('$'+s.price.toFixed(2),8,c.height-28);
+
+  var change=((s.price-hist[Math.max(0,hist.length-2)])/hist[Math.max(0,hist.length-2)]*100);
+  if(hist.length>1){
+    ctx.font='11px Courier New';
+    ctx.fillText((change>=0?'+':'')+change.toFixed(1)+'%',8,c.height-12);
+  }
+
+  ctx.fillStyle='#666';
+  ctx.font='10px Courier New';
+  ctx.fillText('owned: '+s.owned,c.width-70,c.height-12);
+
+  mon.userData.texture.needsUpdate=true;
+}
+
+function createFly(){
+  flyGroup=new THREE.Group();
+  flyGroup.position.set(0,0.6,-0.8);
+
+  var bodyGeo=new THREE.SphereGeometry(0.15,8,8);
+  var bodyMat=new THREE.MeshStandardMaterial({color:0x2d5a1e,roughness:0.6});
+  flyBody=new THREE.Mesh(bodyGeo,bodyMat);
+  flyBody.castShadow=true;
+  flyGroup.add(flyBody);
+
+  var headGeo=new THREE.SphereGeometry(0.08,6,6);
+  var headMat=new THREE.MeshStandardMaterial({color:0x3a7a28});
+  var head=new THREE.Mesh(headGeo,headMat);
+  head.position.set(0.18,0.05,0);
+  flyGroup.add(head);
+
+  var eyeGeo=new THREE.SphereGeometry(0.035,6,6);
+  var eyeMat=new THREE.MeshStandardMaterial({color:0xcc0000,emissive:0x440000});
+  var eyeL=new THREE.Mesh(eyeGeo,eyeMat);
+  eyeL.position.set(0.24,0.08,0.04);
+  flyGroup.add(eyeL);
+  var eyeR=new THREE.Mesh(eyeGeo,eyeMat);
+  eyeR.position.set(0.24,0.08,-0.04);
+  flyGroup.add(eyeR);
+
+  var wingGeo=new THREE.PlaneGeometry(0.2,0.08);
+  var wingMat=new THREE.MeshStandardMaterial({color:0x88aacc,transparent:true,opacity:0.4,side:THREE.DoubleSide});
+  flyWingsL=new THREE.Mesh(wingGeo,wingMat);
+  flyWingsL.position.set(-0.05,0.15,0.1);
+  flyWingsL.rotation.x=-0.3;
+  flyGroup.add(flyWingsL);
+  flyWingsR=new THREE.Mesh(wingGeo,wingMat.clone());
+  flyWingsR.position.set(-0.05,0.15,-0.1);
+  flyWingsR.rotation.x=0.3;
+  flyGroup.add(flyWingsR);
+
+  var briefcaseGeo=new THREE.BoxGeometry(0.12,0.08,0.06);
+  var briefcaseMat=new THREE.MeshStandardMaterial({color:0x8B4513,roughness:0.8});
+  var briefcase=new THREE.Mesh(briefcaseGeo,briefcaseMat);
+  briefcase.position.set(0.05,-0.12,0.15);
+  flyGroup.add(briefcase);
+
+  var handleGeo=new THREE.TorusGeometry(0.03,0.005,4,8,Math.PI);
+  var handleMat=new THREE.MeshStandardMaterial({color:0x666666});
+  var handle=new THREE.Mesh(handleGeo,handleMat);
+  handle.position.set(0.05,-0.07,0.15);
+  handle.rotation.z=Math.PI;
+  flyGroup.add(handle);
+
+  for(var i=0;i<3;i++){
+    var legGeo=new THREE.CylinderGeometry(0.008,0.006,0.15);
+    var legMat=new THREE.MeshStandardMaterial({color:0x222222});
+    var legL=new THREE.Mesh(legGeo,legMat);
+    legL.position.set(-0.02+i*0.04,-0.15,0.08);
+    legL.rotation.z=0.3;
+    flyGroup.add(legL);
+    flyLegs.push(legL);
+    var legR=new THREE.Mesh(legGeo,legMat.clone());
+    legR.position.set(-0.02+i*0.04,-0.15,-0.08);
+    legR.rotation.z=-0.3;
+    flyGroup.add(legR);
+    flyLegs.push(legR);
+  }
+
+  scene.add(flyGroup);
+}
+
+function createKeyboard(){
+  var kbGroup=new THREE.Group();
+  kbGroup.position.set(0,1.1,-1.5);
+  kbGroup.rotation.x=-0.3;
+
+  var baseGeo=new THREE.BoxGeometry(0.8,0.03,0.3);
+  var baseMat=new THREE.MeshStandardMaterial({color:0x1a1a2a,roughness:0.5});
+  var base=new THREE.Mesh(baseGeo,baseMat);
+  kbGroup.add(base);
+
+  for(var row=0;row<3;row++){
+    for(var col=0;col<10;col++){
+      var keyGeo=new THREE.BoxGeometry(0.06,0.02,0.06);
+      var keyMat=new THREE.MeshStandardMaterial({color:0x333344,roughness:0.4});
+      var key=new THREE.Mesh(keyGeo,keyMat);
+      key.position.set(-0.33+col*0.075,0.025,-0.08+row*0.08);
+      kbGroup.add(key);
+    }
+  }
+  keyboard3d=kbGroup;
+  scene.add(kbGroup);
+}
+
+function pressRandomKey(){
+  if(!keyboard3d)return;
+  var keys=[];
+  keyboard3d.children.forEach(function(c,i){if(i>0)keys.push(c);});
+  if(keys.length===0)return;
+  var key=keys[Math.floor(Math.random()*keys.length)];
+  key.position.y+=0.03;
+  key.material.emissive=new THREE.Color(0x4ade80);
+  key.material.emissiveIntensity=0.5;
+  setTimeout(function(){
+    key.position.y-=0.03;
+    key.material.emissiveIntensity=0;
+  },200);
+}
+
+function getNetWorth(){
+  var total=cash;
+  for(var i=0;i<activeStocks.length;i++) total+=activeStocks[i].price*activeStocks[i].owned;
+  return total;
+}
+
+function updateHUD(){
+  var nw=getNetWorth();
+  var nwEl=document.getElementById('netWorth');
+  nwEl.textContent='$'+nw.toLocaleString('en-US',{maximumFractionDigits:0});
+  nwEl.className='val '+(nw>=10000?'green':'red');
+  document.getElementById('cash').textContent='$'+cash.toLocaleString('en-US',{maximumFractionDigits:0});
+  document.getElementById('peak').textContent='$'+peak.toLocaleString('en-US',{maximumFractionDigits:0});
+  var limit=nw*0.3;
+  document.getElementById('lossLimit').textContent='$'+limit.toLocaleString('en-US',{maximumFractionDigits:0});
+  document.getElementById('dayNum').textContent=day;
+  document.getElementById('weatherDisplay').textContent=currentWeather;
+}
+
+function buildMonitorUI(){
+  var panel=document.getElementById('monitorPanel');
+  panel.innerHTML='';
+  var start=currentMonitorPage*MONITORS_PER_PAGE;
+  var end=Math.min(start+MONITORS_PER_PAGE,activeStocks.length);
+  for(var i=start;i<end;i++){
+    (function(idx){
+      var s=activeStocks[idx];
+      var div=document.createElement('div');
+      div.className='monitor';
+      div.id='monitor'+idx;
+      div.innerHTML='<div class="m-header"><span class="m-name">'+s.name+'</span><span class="m-ticker">'+s.ticker+'</span></div>'+
+        '<div class="m-price" id="mprice'+idx+'">$'+s.price.toFixed(2)+'</div>'+
+        '<div class="m-owned" id="mowned'+idx+'">owned: '+s.owned+'</div>'+
+        '<div class="m-chart"><canvas id="mchart'+idx+'" width="220" height="50"></canvas></div>'+
+        '<div class="m-btns">'+
+        '<button class="btn-buy" onclick="buyStock('+idx+')">BUY</button>'+
+        '<button class="btn-sell" onclick="sellStock('+idx+')">SELL</button>'+
+        '<button class="btn-hold" onclick="holdTurn()">HOLD</button></div>';
+      div.addEventListener('mouseenter',function(e){
+        var tt=document.getElementById('tooltip');
+        tt.style.display='block';
+        tt.style.left=e.clientX+10+'px';
+        tt.style.top=e.clientY-60+'px';
+        tt.innerHTML='<b>'+s.name+'</b> ('+s.ticker+')<br>'+s.desc+'<br><span style="color:#888">click BUY to buy 1 share</span>';
+      });
+      div.addEventListener('mousemove',function(e){
+        var tt=document.getElementById('tooltip');
+        tt.style.left=e.clientX+10+'px';
+        tt.style.top=e.clientY-60+'px';
+      });
+      div.addEventListener('mouseleave',function(){document.getElementById('tooltip').style.display='none';});
+      panel.appendChild(div);
+      drawMiniChart(idx);
+    })(i);
+  }
+  if(activeStocks.length>MONITORS_PER_PAGE){
+    var nav=document.createElement('div');
+    nav.style.cssText='display:flex;gap:8px;align-items:center;pointer-events:auto;';
+    if(currentMonitorPage>0){
+      var prevBtn=document.createElement('button');
+      prevBtn.textContent='< prev';
+      prevBtn.style.cssText='padding:6px 12px;background:#1e3a5f;color:#60a5fa;border:1px solid #333;border-radius:4px;cursor:pointer;font-family:Courier New;font-size:11px;';
+      prevBtn.onclick=function(){currentMonitorPage--;buildMonitorUI()};
+      nav.appendChild(prevBtn);
+    }
+    var pageInfo=document.createElement('span');
+    pageInfo.style.cssText='color:#888;font-size:11px;';
+    pageInfo.textContent=(currentMonitorPage+1)+'/'+Math.ceil(activeStocks.length/MONITORS_PER_PAGE);
+    nav.appendChild(pageInfo);
+    if(end<activeStocks.length){
+      var nextBtn=document.createElement('button');
+      nextBtn.textContent='next >';
+      nextBtn.style.cssText='padding:6px 12px;background:#1e3a5f;color:#60a5fa;border:1px solid #333;border-radius:4px;cursor:pointer;font-family:Courier New;font-size:11px;';
+      nextBtn.onclick=function(){currentMonitorPage++;buildMonitorUI()};
+      nav.appendChild(nextBtn);
+    }
+    panel.appendChild(nav);
+  }
+}
+
+function drawMiniChart(idx){
+  var c=document.getElementById('mchart'+idx);
+  if(!c)return;
+  var ctx=c.getContext('2d');
+  var s=activeStocks[idx];
+  var hist=s.history;
+  ctx.clearRect(0,0,c.width,c.height);
+  if(hist.length<2)return;
+  var minP=Infinity,maxP=-Infinity;
+  for(var i=0;i<hist.length;i++){if(hist[i]<minP)minP=hist[i];if(hist[i]>maxP)maxP=hist[i];}
+  var range=maxP-minP||1;
+  var col=s.price>=hist[hist.length-2]?'#4ade80':'#f87171';
+  ctx.beginPath();
+  ctx.strokeStyle=col;
+  ctx.lineWidth=1.5;
+  for(var i=0;i<hist.length;i++){
+    var x=(i/(hist.length-1))*c.width;
+    var y=c.height-(((hist[i]-minP)/range)*(c.height-4));
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+
+function flashMonitor(idx,type){
+  var el=document.getElementById('monitor'+idx);
+  if(!el)return;
+  el.classList.add(type==='up'?'flash-green':'flash-red');
+  setTimeout(function(){el.classList.remove('flash-green','flash-red')},400);
+}
+
+function updateStocks(){
+  for(var i=0;i<activeStocks.length;i++){
+    var volatility=activeStocks[i].price>100?0.08:0.12;
+    var change=(Math.random()-0.48)*activeStocks[i].price*volatility;
+    var prev=activeStocks[i].price;
+    activeStocks[i].price=Math.max(0.5,activeStocks[i].price+change);
+    activeStocks[i].history.push(activeStocks[i].price);
+    if(activeStocks[i].history.length>80)activeStocks[i].history.shift();
+    if(activeStocks[i].price>prev)flashMonitor(i,'up');
+    else flashMonitor(i,'down');
+  }
+}
+
+function showNews(){
+  var nw=getNetWorth();
+  var pool=nw>12000?goodNews:nw<4000?badNews:newsPool;
+  var txt=pool[Math.floor(Math.random()*pool.length)];
+  var anyBig=false;
+  for(var i=0;i<activeStocks.length;i++){
+    if(activeStocks[i].history.length>=2){
+      var pct=(activeStocks[i].price-activeStocks[i].history[activeStocks[i].history.length-2])/activeStocks[i].history[activeStocks[i].history.length-2]*100;
+      if(Math.abs(pct)>5){
+        txt=activeStocks[i].ticker+(pct>0?' surges ':' plumes ')+Math.abs(pct).toFixed(1)+'%';
+        anyBig=true;
+        break;
+      }
+    }
+  }
+  document.getElementById('news').textContent=txt;
+}
+
+function checkSeizure(){
+  var nw=getNetWorth();
+  if(nw<=peak*0.3){
+    seizureTimer=150;
+    shaking=true;
+  }
+}
+
+function buyStock(idx){
+  if(gameOverActive)return;
+  var s=activeStocks[idx];
+  if(cash>=s.price){
+    cash-=s.price;
+    s.owned++;
+    pressRandomKey();
+    animState='typing';animTimer=15;
+  }
+  advanceTurn();
+}
+
+function sellStock(idx){
+  if(gameOverActive)return;
+  var s=activeStocks[idx];
+  if(s.owned>0){
+    cash+=s.price;
+    s.owned--;
+    pressRandomKey();
+    animState='typing';animTimer=15;
+  }
+  advanceTurn();
+}
+
+function holdTurn(){
+  if(gameOverActive)return;
+  pressRandomKey();
+  animState='typing';animTimer=15;
+  advanceTurn();
+}
+
+function advanceTurn(){
+  day++;
+  updateStocks();
+  triggerMarketEvent();
+  showNews();
+  updateWeather();
+  checkSeizure();
+  if(getNetWorth()>peak)peak=getNetWorth();
+  updateHUD();
+  buildMonitorUI();
+  for(var i=0;i<monitors3d.length;i++)drawMonitorScreen(monitors3d[i]);
+  saveGame();
+}
+
+function saveGame(){
+  var save={
+    stocks:activeStocks.map(function(s){return{price:s.price,owned:s.owned,history:s.history.slice(-60)}}),
+    cash:cash,peak:peak,day:day,weather:currentWeather
+  };
+  try{localStorage.setItem('flyvestor_save',JSON.stringify(save))}catch(e){}
+}
+
+function loadGame(){
+  try{
+    var save=JSON.parse(localStorage.getItem('flyvestor_save'));
+    if(save&&save.stocks){
+      for(var i=0;i<save.stocks.length&&i<activeStocks.length;i++){
+        activeStocks[i].price=save.stocks[i].price;
+        activeStocks[i].owned=save.stocks[i].owned;
+        activeStocks[i].history=save.stocks[i].history;
+      }
+      cash=save.cash;peak=save.peak;day=save.day;
+      if(save.weather)currentWeather=save.weather;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+var marketEvents=[
+  {text:'AI BUBBLE POPS — NVDA crashes 40%%',stock:'NVDA',change:-0.40},
+  {text:'AI BUBBLE DOUBLE POPS — NVDA crashes 60%%',stock:'NVDA',change:-0.60},
+  {text:'NVDA announces GPU for flies — stock moons 30%%',stock:'NVDA',change:0.30},
+  {text:'NVDA releases fly-compatible CUDA cores',stock:'NVDA',change:0.25},
+  {text:'MSFT blue screen epidemic — stock drops 20%%',stock:'MSFT',change:-0.20},
+  {text:'MSFT buys GitHub again somehow — stock up 15%%',stock:'MSFT',change:0.15},
+  {text:'AAPL releases fruit fly edition iPhone',stock:'AAPL',change:0.35},
+  {text:'AAPL fruit recalled, stock plummets 25%%',stock:'AAPL',change:-0.25},
+  {text:'AAPL sued by actual fruit — stock drops',stock:'AAPL',change:-0.15},
+  {text:'TSLA autopilot drives into wall street',stock:'TSLA',change:-0.30},
+  {text:'TSLA announces fly-sized car — stock surges',stock:'TSLA',change:0.25},
+  {text:'TSLA cybertruck catches fire again',stock:'TSLA',change:-0.20},
+  {text:'GOOG search results show your browser history',stock:'GOOG',change:-0.25},
+  {text:'GOOG AI takes over the internet — stock up',stock:'GOOG',change:0.20},
+  {text:'AMZN delivery drones attack flies',stock:'AMZN',change:-0.30},
+  {text:'AMZN prime day extends to infinity — stock up',stock:'AMZN',change:0.20},
+  {text:'META fly influencer loses all followers',stock:'META',change:-0.20},
+  {text:'META launches fly-only social network — stock surges',stock:'META',change:0.30},
+  {text:'BZZ Inc recalls all honey',stock:'BZZ',change:-0.35},
+  {text:'BZZ Inc honey rated best in the world',stock:'BZZ',change:0.25},
+  {text:'FRUT Corp CEO eaten by frog',stock:'FRUT',change:-0.40},
+  {text:'FRUT Corp launches premium fruit line',stock:'FRUT',change:0.20},
+  {text:'DIE Corp product recalled: all products',stock:'DIE',change:-0.30},
+  {text:'DIE Corp rated #1 pest control',stock:'DIE',change:0.25},
+  {text:'WALL STREET CRASH — everything drops 15%%',stock:'ALL',change:-0.15},
+  {text:'MARKET RALLY — everything goes up 10%%',stock:'ALL',change:0.10},
+  {text:'FLY PANDEMIC — investors panic sell',stock:'ALL',change:-0.10},
+  {text:'FRUIT FLY ECONOMY BOOMS — everything up',stock:'ALL',change:0.15}
+];
+
+function triggerMarketEvent(){
+  if(Math.random()>0.25)return;
+  var event=marketEvents[Math.floor(Math.random()*marketEvents.length)];
+  if(event.stock==='ALL'){
+    for(var i=0;i<activeStocks.length;i++){
+      activeStocks[i].price=Math.max(0.5,activeStocks[i].price*(1+event.change));
+    }
+  }else{
+    for(var i=0;i<activeStocks.length;i++){
+      if(activeStocks[i].ticker===event.stock){
+        activeStocks[i].price=Math.max(0.5,activeStocks[i].price*(1+event.change));
+        break;
+      }
+    }
+  }
+  document.getElementById('news').textContent=event.text;
+}
+
+var currentWeather='clear';
+var weatherParticles=[];
+var rainGroup=null;
+
+var weatherTypes=[
+  {name:'clear',weight:40},
+  {name:'rain',weight:25},
+  {name:'storm',weight:10},
+  {name:'fog',weight:15},
+  {name:'snow',weight:10}
+];
+
+function pickWeather(){
+  var total=0;
+  for(var i=0;i<weatherTypes.length;i++)total+=weatherTypes[i].weight;
+  var r=Math.random()*total;
+  var acc=0;
+  for(var i=0;i<weatherTypes.length;i++){
+    acc+=weatherTypes[i].weight;
+    if(r<=acc)return weatherTypes[i].name;
+  }
+  return 'clear';
+}
+
+function updateWeather(){
+  if(Math.random()>0.3)return;
+  currentWeather=pickWeather();
+  applyWeather();
+}
+
+function applyWeather(){
+  if(rainGroup){scene.remove(rainGroup);rainGroup=null;}
+  weatherParticles=[];
+
+  if(currentWeather==='clear'){
+    scene.fog=new THREE.Fog(0x1a1a2e,30,80);
+    scene.background=new THREE.Color(0x1a1a2e);
+  }else if(currentWeather==='rain'){
+    scene.fog=new THREE.Fog(0x111122,20,60);
+    scene.background=new THREE.Color(0x111122);
+    createRain(300);
+  }else if(currentWeather==='storm'){
+    scene.fog=new THREE.Fog(0x0a0a15,15,50);
+    scene.background=new THREE.Color(0x0a0a15);
+    createRain(600);
+  }else if(currentWeather==='fog'){
+    scene.fog=new THREE.Fog(0x333344,5,25);
+    scene.background=new THREE.Color(0x333344);
+  }else if(currentWeather==='snow'){
+    scene.fog=new THREE.Fog(0x222233,20,60);
+    scene.background=new THREE.Color(0x222233);
+    createSnow(200);
+  }
+  document.getElementById('newsBox').querySelector('.label').textContent='weather: '+currentWeather;
+}
+
+function createRain(count){
+  rainGroup=new THREE.Group();
+  var geo=new THREE.BufferGeometry();
+  var positions=[];
+  for(var i=0;i<count;i++){
+    positions.push((Math.random()-0.5)*30,Math.random()*15,(Math.random()-0.5)*20);
+  }
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  var mat=new THREE.PointsMaterial({color:0x8899bb,size:0.08,transparent:true,opacity:0.6});
+  var points=new THREE.Points(geo,mat);
+  rainGroup.add(points);
+  scene.add(rainGroup);
+}
+
+function createSnow(count){
+  rainGroup=new THREE.Group();
+  var geo=new THREE.BufferGeometry();
+  var positions=[];
+  for(var i=0;i<count;i++){
+    positions.push((Math.random()-0.5)*30,Math.random()*15,(Math.random()-0.5)*20);
+  }
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  var mat=new THREE.PointsMaterial({color:0xffffff,size:0.12,transparent:true,opacity:0.7});
+  var points=new THREE.Points(geo,mat);
+  rainGroup.add(points);
+  scene.add(rainGroup);
+}
+
+function animateWeather(){
+  if(!rainGroup)return;
+  var positions=rainGroup.children[0].geometry.attributes.position.array;
+  var speed=currentWeather==='rain'||currentWeather==='storm'?0.3:0.05;
+  var drift=currentWeather==='storm'?0.05:0;
+  for(var i=0;i<positions.length;i+=3){
+    positions[i+1]-=speed;
+    positions[i]+=(Math.random()-0.5)*drift;
+    if(positions[i+1]<-0.5){
+      positions[i+1]=15;
+      positions[i]=(Math.random()-0.5)*30;
+      positions[i+2]=(Math.random()-0.5)*20;
+    }
+  }
+  rainGroup.children[0].geometry.attributes.position.needsUpdate=true;
+}
+
+function startGame(){
+  activeStocks=[];
+  for(var i=0;i<allStocks.length;i++){
+    activeStocks.push({
+      name:allStocks[i].name,ticker:allStocks[i].ticker,
+      price:allStocks[i].price,owned:0,
+      history:[allStocks[i].price],
+      color:allStocks[i].color,desc:allStocks[i].desc
+    });
+  }
+  cash=10000;peak=10000;day=1;gameOverActive=false;
+  seizureTimer=0;shaking=false;currentMonitorPage=0;
+  flyY=0.6;flyVelY=0;isFlying=false;
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('gameOver').style.display='none';
+  document.getElementById('seizureOverlay').style.opacity=0;
+
+  for(var i=0;i<monitors3d.length;i++)scene.remove(monitors3d[i]);
+  monitors3d=[];
+  var positions=[-2.2,0,2.2];
+  for(var i=0;i<3;i++){
+    var m=createMonitor(positions[i],activeStocks[i],i);
+    drawMonitorScreen(m);
+  }
+  currentWeather='clear';
+  applyWeather();
+  buildMonitorUI();
+  updateHUD();
+  updateMonitorMapping();
+  saveGame();
+}
+
+function updateMonitorMapping(){
+  var start=currentMonitorPage*MONITORS_PER_PAGE;
+  for(var i=0;i<monitors3d.length;i++){
+    var stockIdx=start+i;
+    if(stockIdx<activeStocks.length){
+      monitors3d[i].userData.stock=activeStocks[stockIdx];
+      drawMonitorScreen(monitors3d[i]);
+    }
+  }
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  var t=clock.getElapsedTime();
+
+  if(flyGroup&&!gameOverActive){
+    if(animState==='typing'&&animTimer>0){
+      animTimer--;
+      if(animTimer<=0)animState='idle';
+    }else{
+      if(keys.w)flyGroup.position.z-=flySpeed;
+      if(keys.s)flyGroup.position.z+=flySpeed;
+      if(keys.a)flyGroup.position.x-=flySpeed;
+      if(keys.d)flyGroup.position.x+=flySpeed;
+    }
+
+    if(keys.e){
+      flyVelY+=flyPower*0.5;
+      isFlying=true;
+    }else if(keys.q){
+      flyVelY-=flyPower*0.3;
+    }
+    if(!keys.e&&!keys.q){
+      flyVelY*=0.95;
+    }
+    flyVelY-=gravity;
+    flyY+=flyVelY;
+    if(flyY<=0.6){flyY=0.6;flyVelY=0;isFlying=false;}
+    if(flyY>4){flyY=4;flyVelY=0;}
+
+    flyGroup.position.x=Math.max(-8.5,Math.min(8.5,flyGroup.position.x));
+    flyGroup.position.z=Math.max(-5,Math.min(5,flyGroup.position.z));
+    flyGroup.position.y=flyY+Math.sin(clock.getElapsedTime()*3)*0.02;
+
+    var moveDir=new THREE.Vector3();
+    if(keys.w)moveDir.z=-1;
+    if(keys.s)moveDir.z=1;
+    if(keys.a)moveDir.x=-1;
+    if(keys.d)moveDir.x=1;
+    if(moveDir.length()>0){
+      var targetAngle=Math.atan2(moveDir.x,moveDir.z);
+      flyGroup.rotation.y+=(targetAngle-flyGroup.rotation.y)*0.15;
+    }
+
+    if(flyWingsL){
+      var wingSpeed=isFlying?80:50;
+      var wingAmp=isFlying?0.6:0.4;
+      flyWingsL.rotation.z=Math.sin(clock.getElapsedTime()*wingSpeed)*wingAmp;
+      flyWingsR.rotation.z=-Math.sin(clock.getElapsedTime()*wingSpeed)*wingAmp;
+    }
+
+    cameraOffset.z=cameraZoom;
+    var camTarget=new THREE.Vector3(
+      flyGroup.position.x+cameraOffset.x,
+      flyGroup.position.y+cameraOffset.y,
+      flyGroup.position.z+cameraOffset.z
+    );
+    camera.position.lerp(camTarget,0.05);
+    camera.lookAt(flyGroup.position.x,flyGroup.position.y+0.5,flyGroup.position.z);
+  }
+
+  if(shaking&&seizureTimer>0){
+    seizureTimer--;
+    var intensity=Math.min(seizureTimer/20,8);
+    document.getElementById('seizureOverlay').style.opacity=Math.min(seizureTimer/40,0.6);
+    camera.position.x=(Math.random()-0.5)*intensity*0.05;
+    camera.position.y=4+(Math.random()-0.5)*intensity*0.03;
+    if(seizureTimer<=0){
+      shaking=false;
+      gameOverActive=true;
+      camera.position.set(0,4,cameraZoom);
+      document.getElementById('seizureOverlay').style.opacity=0;
+      document.getElementById('gameOver').style.display='flex';
+      document.getElementById('finalScore').textContent='you survived '+day+' days. net worth: $'+getNetWorth().toLocaleString('en-US',{maximumFractionDigits:0});
+    }
+  }
+
+  monitors3d.forEach(function(m,i){
+    m.rotation.y=Math.sin(t*0.3+i)*0.05;
+  });
+
+  animateWeather();
+  if(currentWeather==='storm'&&Math.random()>0.97){
+    var lightning=new THREE.PointLight(0xffffff,2,50);
+    lightning.position.set((Math.random()-0.5)*20,10,(Math.random()-0.5)*20);
+    scene.add(lightning);
+    setTimeout(function(){scene.remove(lightning)},80);
+  }
+
+  renderer.render(scene,camera);
+}
+
+window.addEventListener('resize',function(){
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+
+var keys={w:false,a:false,s:false,d:false,e:false,q:false};
+var cameraOffset=new THREE.Vector3(0,3.5,7);
+var cameraZoom=7;
+var flySpeed=0.08;
+var flyY=0.6;
+var flyVelY=0;
+var gravity=0.0008;
+var flyPower=0.07;
+var isFlying=false;
+
+window.addEventListener('keydown',function(e2){
+  var k=e2.key.toLowerCase();
+  if(k==='w')keys.w=true;
+  if(k==='a')keys.a=true;
+  if(k==='s')keys.s=true;
+  if(k==='d')keys.d=true;
+  if(k==='e'){keys.e=true;e2.preventDefault();}
+  if(k==='q'){keys.q=true;e2.preventDefault();}
+});
+window.addEventListener('keyup',function(e2){
+  var k=e2.key.toLowerCase();
+  if(k==='w')keys.w=false;
+  if(k==='a')keys.a=false;
+  if(k==='s')keys.s=false;
+  if(k==='d')keys.d=false;
+  if(k==='e')keys.e=false;
+  if(k==='q')keys.q=false;
+});
+window.addEventListener('wheel',function(e2){
+  cameraZoom+=e2.deltaY*0.005;
+  cameraZoom=Math.max(3,Math.min(15,cameraZoom));
+});
+
+init3D();
+animate();
+</script>
+</body>
+</html>
