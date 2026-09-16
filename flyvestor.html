@@ -73,18 +73,18 @@ canvas{display:block}
   <div class="hud-box"><div class="label">loss limit (70%)</div><div class="val red" id="lossLimit">$3,000</div></div>
   <div class="hud-box" style="font-size:10px;color:#666">WASD move | E up | Q down | scroll zoom</div>
 </div>
-<div id="newsBox"><div class="hud-box" id="news">the market awaits your decisions, tiny fly</div></div>
-<div id="countdownBox" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:none;z-index:300;text-align:center;pointer-events:none">
-  <div style="background:rgba(0,0,0,0.9);border:2px solid #f87171;border-radius:12px;padding:20px 40px">
-    <div style="color:#f87171;font-size:14px;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px">investor's downfall</div>
-    <div style="color:#fff;font-size:48px;font-weight:bold" id="countdownTimer">5:00</div>
-    <div style="color:#f87171;font-size:12px;margin-top:8px">recover above 50% peak to stop the countdown</div>
+<div id="newsBox"><div class="hud-box" id="news">the market awaits your decisions, tiny fly</div>
+<div id="countdownBox" style="display:none;margin-top:8px">
+  <div style="background:rgba(0,0,0,0.85);border:1px solid #f87171;border-radius:6px;padding:10px 14px">
+    <div style="color:#f87171;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">investor's downfall</div>
+    <div style="color:#fff;font-size:28px;font-weight:bold" id="countdownTimer">5:00</div>
+    <div style="color:#f87171;font-size:10px;margin-top:4px">recover above 50% to stop</div>
   </div>
-</div>
+</div></div>
 <div id="monitorPanel"></div>
 <div id="tooltip"></div>
 <div id="testMenu" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:none;z-index:600;width:500px;max-height:80vh;overflow-y:auto;background:rgba(10,10,30,0.98);border:2px solid #facc15;border-radius:12px;padding:20px;font-family:'Courier New',monospace;color:#e0e0e0">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+  <div id="tmDragBar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;cursor:grab">
     <div style="color:#facc15;font-size:18px;font-weight:bold">TEST MENU</div>
     <button onclick="document.getElementById('testMenu').style.display='none'" style="background:none;border:1px solid #555;color:#888;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:inherit">X</button>
   </div>
@@ -1129,6 +1129,7 @@ animate();
 var konamiCode=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
 var konamiIndex=0;
 document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT')return;
   if(e.key===konamiCode[konamiIndex]){
     konamiIndex++;
     if(konamiIndex===konamiCode.length){
@@ -1139,6 +1140,29 @@ document.addEventListener('keydown',function(e){
     konamiIndex=0;
   }
 });
+
+(function(){
+  var menu=document.getElementById('testMenu');
+  var dragBar=document.getElementById('tmDragBar');
+  var dragging=false,offsetX=0,offsetY=0;
+  dragBar.addEventListener('mousedown',function(e){
+    if(e.target.tagName==='BUTTON')return;
+    dragging=true;
+    var rect=menu.getBoundingClientRect();
+    offsetX=e.clientX-rect.left;
+    offsetY=e.clientY-rect.top;
+    menu.style.transform='none';
+    menu.style.left=rect.left+'px';
+    menu.style.top=rect.top+'px';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging)return;
+    menu.style.left=(e.clientX-offsetX)+'px';
+    menu.style.top=(e.clientY-offsetY)+'px';
+  });
+  document.addEventListener('mouseup',function(){dragging=false;});
+})();
 
 function toggleTestMenu(){
   var menu=document.getElementById('testMenu');
