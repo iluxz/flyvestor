@@ -4,7 +4,7 @@ you are a fruit fly. you have a briefcase. you must invest.
 
 ## play
 
-https://iluxz.github.io/flyvestor/
+https://iluxz.github.io/flyvestor/flyvestor.html
 
 ## controls
 
